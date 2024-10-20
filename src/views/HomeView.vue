@@ -113,7 +113,7 @@ export default {
       formData.append("image", frameBlob);
 
       try {
-        const response = await fetch("http://localhost:5000/process_image", {
+        const response = await fetch("https://csrtgjq0-5000.brs.devtunnels.ms/process_image", {
           method: "POST",
           body: formData,
         });
