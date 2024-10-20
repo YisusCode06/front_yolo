@@ -43,6 +43,8 @@
 </template>
 
 <script>
+import io from 'socket.io-client'; // Importar socket.io-client
+
 export default {
   data() {
     return {
@@ -56,6 +58,7 @@ export default {
         'Apto para chifles': 0,
         'No apto para chifles': 0
       },
+      socket: null // Conexión de WebSocket
     };
   },
   methods: {
@@ -102,35 +105,19 @@ export default {
       // Dibujar el fotograma actual en el canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Convertir el fotograma a blob
+      // Convertir el fotograma a base64
       canvas.toBlob((blob) => {
-        this.sendFrame(blob);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64Image = reader.result.split(',')[1]; // Obtener solo la parte de la imagen base64
+          this.sendFrame(base64Image); // Enviar el fotograma como base64
+        };
+        reader.readAsDataURL(blob);
       }, "image/jpeg");
     },
-    // Enviar el fotograma al backend para su procesamiento
-    async sendFrame(frameBlob) {
-      const formData = new FormData();
-      formData.append("image", frameBlob);
-
-      try {
-        const response = await fetch("https://csrtgjq0-5000.brs.devtunnels.ms/process_image", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await response.json();
-
-        // Si el backend devuelve una imagen procesada, actualizar el estado
-        if (data.image) {
-          this.processedImage = `data:image/jpeg;base64,${data.image}`;
-        }
-
-        // Si el backend devuelve el conteo de plátanos, actualizar el contador
-        if (data.banana_counts) {
-          this.bananaCounts = data.banana_counts;
-        }
-      } catch (error) {
-        console.error("Error enviando el fotograma:", error);
-      }
+    // Enviar el fotograma al backend mediante WebSockets
+    sendFrame(base64Image) {
+      this.socket.emit('process_image', { image: base64Image });
     },
     // Obtener la lista de cámaras disponibles
     async getCameras() {
@@ -152,13 +139,38 @@ export default {
   },
   mounted() {
     this.getCameras(); // Cargar las cámaras al montar el componente
+
+    // Conectar al servidor de WebSockets
+    this.socket = io('http://localhost:5000'); // Asegúrate de que la URL apunte a tu backend
+
+    // Escuchar el evento de imagen procesada desde el backend
+    this.socket.on('image_processed', (data) => {
+      if (data.image) {
+        this.processedImage = `data:image/jpeg;base64,${data.image}`;
+      }
+
+      if (data.banana_counts) {
+        this.bananaCounts = data.banana_counts;
+      }
+    });
+
+    // Manejar errores del servidor
+    this.socket.on('error', (error) => {
+      console.error("Error desde el servidor:", error);
+    });
   },
   beforeDestroy() {
     // Limpiar el intervalo si el componente es destruido o si se detiene la detección
     this.stopProcessing();
+
+    // Desconectar el socket cuando el componente se destruye
+    if (this.socket) {
+      this.socket.disconnect();
+    }
   },
 };
 </script>
+
 
 
 <style>
