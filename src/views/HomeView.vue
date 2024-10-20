@@ -141,7 +141,7 @@ export default {
     this.getCameras(); // Cargar las cámaras al montar el componente
 
     // Conectar al servidor de WebSockets
-    this.socket = io('http://localhost:5000'); // Asegúrate de que la URL apunte a tu backend
+    this.socket = io('https://csrtgjq0-5000.brs.devtunnels.ms'); // Asegúrate de que la URL apunte a tu backend
 
     // Escuchar el evento de imagen procesada desde el backend
     this.socket.on('image_processed', (data) => {
